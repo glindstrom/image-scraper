@@ -87,9 +87,24 @@ export async function scrapeUrl(jobId, targetUrl, storage) {
   const $ = cheerio.load(html);
   const rawUrls = [];
 
-  $('img[src]').each((_, el) => rawUrls.push($(el).attr('src')));
-  $('img[srcset]').each((_, el) => rawUrls.push(...extractSrcset($(el).attr('srcset'))));
-  $('source[srcset]').each((_, el) => rawUrls.push(...extractSrcset($(el).attr('srcset'))));
+  $('img').each((_, el) => {
+    const $el = $(el);
+    // Standard attributes
+    const src = $el.attr('src');
+    if (src) rawUrls.push(src);
+    const srcset = $el.attr('srcset');
+    if (srcset) rawUrls.push(...extractSrcset(srcset));
+    // Lazy-loading data attributes (lazysizes, WP, etc.)
+    for (const attr of ['data-src', 'data-srcset', 'data-lazy-src', 'data-lazy-srcset', 'data-original']) {
+      const val = $el.attr(attr);
+      if (val) rawUrls.push(...(attr.includes('srcset') ? extractSrcset(val) : [val]));
+    }
+  });
+  $('source').each((_, el) => {
+    const $el = $(el);
+    const srcset = $el.attr('srcset') || $el.attr('data-srcset');
+    if (srcset) rawUrls.push(...extractSrcset(srcset));
+  });
   $('meta[property="og:image"]').each((_, el) => rawUrls.push($(el).attr('content')));
 
   const imageUrls = resolveUrls(targetUrl, rawUrls);
