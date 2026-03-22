@@ -3,3 +3,4 @@ backend/storage/
 dist/
 .env
 test-results/
+scripts/
