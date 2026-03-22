@@ -1,0 +1,25 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: "3001"
+      FRONTEND_URL: "http://localhost:5173"
+      STORAGE_PROVIDER: "local"
+    volumes:
+      - backend-storage:/app/backend/storage
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  backend-storage:

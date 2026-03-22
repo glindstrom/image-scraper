@@ -1,4 +1,3 @@
-import React from 'react';
 import { ImageCard } from './ImageCard.jsx';
 import { zipUrl } from '../api.js';
 

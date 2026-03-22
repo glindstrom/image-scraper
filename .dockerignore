@@ -1,0 +1,8 @@
+node_modules/
+backend/storage/
+frontend/dist/
+.env
+test-results/
+e2e/
+backend/src/**/*.test.js
+backend/src/**/*.integration.test.js

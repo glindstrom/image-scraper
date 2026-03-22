@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 export function UrlInput({ onSubmit, isLoading }) {
   const [value, setValue] = useState('');

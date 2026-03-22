@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { UrlInput } from './components/UrlInput.jsx';
 import { ImageGallery } from './components/ImageGallery.jsx';
 import { useJobPoller } from './hooks/useJobPoller.js';

@@ -3,6 +3,7 @@ import * as cheerio from 'cheerio';
 import { URL } from 'url';
 import path from 'path';
 import mime from 'mime-types';
+import { createHash } from 'crypto';
 import { updateJob } from './jobStore.js';
 
 const BATCH_SIZE = 5;
@@ -27,8 +28,24 @@ function resolveUrls(baseUrl, rawUrls) {
   return result;
 }
 
-function extractSrcset(srcset) {
-  return srcset.split(',').map(part => part.trim().split(/\s+/)[0]).filter(Boolean);
+// Returns only the URL with the highest w/x descriptor from a srcset string.
+// Falls back to all URLs when no descriptors are present.
+function bestFromSrcset(srcset) {
+  const entries = srcset.split(',').map(part => {
+    const tokens = part.trim().split(/\s+/);
+    const url = tokens[0];
+    const descriptor = tokens[1] ?? '';
+    const wMatch = descriptor.match(/^(\d+)w$/i);
+    const xMatch = descriptor.match(/^([\d.]+)x$/i);
+    return { url, w: wMatch ? parseInt(wMatch[1]) : null, x: xMatch ? parseFloat(xMatch[1]) : null };
+  }).filter(e => e.url);
+
+  if (entries.length === 0) return [];
+  if (entries.some(e => e.w !== null))
+    return [entries.reduce((a, b) => (b.w ?? 0) > (a.w ?? 0) ? b : a).url];
+  if (entries.some(e => e.x !== null))
+    return [entries.reduce((a, b) => (b.x ?? 0) > (a.x ?? 0) ? b : a).url];
+  return entries.map(e => e.url);
 }
 
 function deriveFilename(imageUrl, contentType) {
@@ -39,7 +56,7 @@ function deriveFilename(imageUrl, contentType) {
   } catch {}
   // Fallback: hash of URL + extension from content-type
   const ext = mime.extension(contentType) || 'jpg';
-  const hash = Buffer.from(imageUrl).toString('base64url').slice(0, 16);
+  const hash = createHash('sha1').update(imageUrl).digest('hex').slice(0, 16);
   return `${hash}.${ext}`;
 }
 
@@ -89,21 +106,29 @@ export async function scrapeUrl(jobId, targetUrl, storage) {
 
   $('img').each((_, el) => {
     const $el = $(el);
-    // Standard attributes
-    const src = $el.attr('src');
-    if (src) rawUrls.push(src);
+    // Standard: srcset wins over src (src is the low-quality fallback when srcset is present)
     const srcset = $el.attr('srcset');
-    if (srcset) rawUrls.push(...extractSrcset(srcset));
-    // Lazy-loading data attributes (lazysizes, WP, etc.)
-    for (const attr of ['data-src', 'data-srcset', 'data-lazy-src', 'data-lazy-srcset', 'data-original']) {
-      const val = $el.attr(attr);
-      if (val) rawUrls.push(...(attr.includes('srcset') ? extractSrcset(val) : [val]));
+    if (srcset) {
+      rawUrls.push(...bestFromSrcset(srcset));
+    } else {
+      const src = $el.attr('src');
+      if (src) rawUrls.push(src);
+    }
+    // Lazy-loading: data-srcset wins over data-src variants
+    const lazySrcset = $el.attr('data-srcset') || $el.attr('data-lazy-srcset');
+    if (lazySrcset) {
+      rawUrls.push(...bestFromSrcset(lazySrcset));
+    } else {
+      for (const attr of ['data-src', 'data-lazy-src', 'data-original']) {
+        const val = $el.attr(attr);
+        if (val) { rawUrls.push(val); break; }
+      }
     }
   });
   $('source').each((_, el) => {
     const $el = $(el);
     const srcset = $el.attr('srcset') || $el.attr('data-srcset');
-    if (srcset) rawUrls.push(...extractSrcset(srcset));
+    if (srcset) rawUrls.push(...bestFromSrcset(srcset));
   });
   $('meta[property="og:image"]').each((_, el) => rawUrls.push($(el).attr('content')));
 
