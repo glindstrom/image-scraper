@@ -66,4 +66,8 @@ export class LocalStorageProvider extends StorageProvider {
   async getFilePath(jobId, filename) {
     return path.join(JOBS_DIR, jobId, filename);
   }
+
+  async cleanup() {
+    await fs.rm(JOBS_DIR, { recursive: true, force: true });
+  }
 }

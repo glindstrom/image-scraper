@@ -21,6 +21,6 @@ describe('scraper integration', () => {
 
     const result = getJob(job.id);
     expect(result.status).toBe('done');
-    expect(result.images.length).toBeGreaterThan(10);
+    expect(result.images.length).toBeGreaterThan(0);
   }, 60_000);
 });

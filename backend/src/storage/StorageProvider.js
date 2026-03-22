@@ -22,4 +22,7 @@ export class StorageProvider {
   async deleteJob(jobId) {
     throw new Error('Not implemented');
   }
+
+  /** Called on server shutdown. Override to clean up local resources. */
+  async cleanup() {}
 }
