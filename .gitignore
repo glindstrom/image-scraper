@@ -2,3 +2,4 @@ node_modules/
 backend/storage/
 dist/
 .env
+test-results/
